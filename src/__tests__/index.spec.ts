@@ -41,122 +41,73 @@ describe('textToJSON', () => {
     test_summary_name_count 1    
     `
     const result = await textToJSON({ metrics: input })
-    const expected = [{
-      help: 'test_counter_help',
-      name: 'test_counter_name',
-      type: 'counter',
-      values: [{
-        value: 13,
-        labels: {}
-      }],
-      aggregator: 'sum'
-    }, {
-      name: 'test_histogram_name',
-      help: 'test_histogram_help',
-      type: 'histogram',
-      values: [{
-        labels: { le: 0.005 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 0.01 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 0.025 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 0.05 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 0.1 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 0.25 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 0.5 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 1 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 2.5 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 5 },
-        value: 0,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: 10 },
-        value: 1,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { le: '+Inf' },
-        value: 1,
-        metricName: 'test_histogram_name_bucket'
-      }, {
-        labels: { },
-        value: 10,
-        metricName: 'test_histogram_name_sum'
-      }, {
-        labels: { },
-        value: 1,
-        metricName: 'test_histogram_name_count'
-      }],
-      aggregator: 'sum'
-    }, {
-      help: 'test_gauge_help',
-      name: 'test_gauge_name',
-      type: 'gauge',
-      values: [{
-        value: 123,
-        labels: { }
-      }],
-      aggregator: 'sum'
-    }, {
-      name: 'test_summary_name',
-      help: 'test_summary_help',
-      type: 'summary',
-      values: [{
-        labels: { quantile: 0.01 },
-        value: 1234
-      }, {
-        labels: { quantile: 0.05 },
-        value: 1234
-      }, {
-        labels: { quantile: 0.5 },
-        value: 1234
-      }, {
-        labels: { quantile: 0.9 },
-        value: 1234
-      }, {
-        labels: { quantile: 0.95 },
-        value: 1234
-      }, {
-        labels: { quantile: 0.99 },
-        value: 1234
-      }, {
-        labels: { quantile: 0.999 },
-        value: 1234
-      }, {
-        metricName: 'test_summary_name_sum',
-        labels: { },
-        value: 1234
-      }, {
-        metricName: 'test_summary_name_count',
-        labels: { },
-        value: 1
-      }],
-      aggregator: 'sum'
-    }]
+    const expected = [
+      {
+        name: 'test_histogram_name',
+        help: 'test_histogram_help',
+        type: 'HISTOGRAM',
+        metrics: [
+          {
+            buckets: {
+              '+Inf': '1',
+              0.005: '0',
+              0.01: '0',
+              0.025: '0',
+              0.05: '0',
+              0.1: '0',
+              0.25: '0',
+              0.5: '0',
+              1: '0',
+              10: '1',
+              2.5: '0',
+              5: '0'
+            },
+            count: '1',
+            sum: '10'
+          }
+        ]
+      },
+      {
+        name: 'test_gauge_name',
+        help: 'test_gauge_help',
+        type: 'GAUGE',
+        metrics: [
+          {
+            value: '123'
+          }
+        ]
+      },
+      {
+        name: 'test_summary_name',
+        help: 'test_summary_help',
+        type: 'SUMMARY',
+        metrics: [
+          {
+            quantiles: {
+              0.01: '1234',
+              0.05: '1234',
+              0.5: '1234',
+              0.9: '1234',
+              0.95: '1234',
+              0.99: '1234',
+              0.999: '1234'
+            },
+            count: '1',
+            sum: '1234'
+          }
+        ]
+      },
+      {
+        name: 'test_counter_name',
+        help: 'test_counter_help',
+        type: 'COUNTER',
+        metrics: [
+          {
+            value: '13'
+          }
+        ]
+      }
+    ]
     expect(result).toStrictEqual(expected)
   })
   it('handles example from prometheus webside', async () => {
