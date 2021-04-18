@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 import { textToJSON } from '../index'
 
 describe('textToJSON', () => {

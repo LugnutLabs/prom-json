@@ -1,5 +1,3 @@
-// import { Registry, Counter, Gauge, Summary, Histogram } from 'prom-client'
-
 import * as readline from 'readline'
 import { Readable } from 'stream'
 
