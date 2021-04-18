@@ -43,6 +43,16 @@ describe('textToJSON', () => {
     const result = await textToJSON({ metrics: input })
     const expected = [
       {
+        name: 'test_counter_name',
+        help: 'test_counter_help',
+        type: 'COUNTER',
+        metrics: [
+          {
+            value: '13'
+          }
+        ]
+      },
+      {
         name: 'test_histogram_name',
         help: 'test_histogram_help',
         type: 'HISTOGRAM',
@@ -96,36 +106,21 @@ describe('textToJSON', () => {
             sum: '1234'
           }
         ]
-      },
-      {
-        name: 'test_counter_name',
-        help: 'test_counter_help',
-        type: 'COUNTER',
-        metrics: [
-          {
-            value: '13'
-          }
-        ]
       }
     ]
     expect(result).toStrictEqual(expected)
   })
   it('handles example from prometheus website', async () => {
     const input = `
-    # HELP http_requests_total The total number of HTTP requests.
-    # TYPE http_requests_total counter
-    http_requests_total{method="post",code="200"} 1027 1395066363000
-    http_requests_total{method="post",code="400"}    3 1395066363000
-    
     # Escaping in label values:
     msdos_file_access_time_seconds{path="C:\\DIR\\FILE.TXT",error="Cannot find file:\n\"FILE.TXT\""} 1.458255915e9
-    
+
     # Minimalistic line:
     metric_without_timestamp_and_labels 12.47
-    
+
     # A weird metric from before the epoch:
     something_weird{problem="division by zero"} +Inf -3982045
-    
+        
     # A histogram, which has a pretty complex representation in the text format:
     # HELP http_request_duration_seconds A histogram of the request duration.
     # TYPE http_request_duration_seconds histogram
@@ -148,6 +143,11 @@ describe('textToJSON', () => {
     rpc_duration_seconds{quantile="0.99"} 76656
     rpc_duration_seconds_sum 1.7560473e+07
     rpc_duration_seconds_count 2693
+
+    # HELP http_requests_total The total number of HTTP requests.
+    # TYPE http_requests_total counter
+    http_requests_total{method="post",code="200"} 1027 1395066363000
+    http_requests_total{method="post",code="400"}    3 1395066363000
     `
     const expected = [
       {
@@ -252,7 +252,6 @@ describe('textToJSON', () => {
     const result = await textToJSON({ metrics: input })
     expect(result).toStrictEqual(expected)
   })
-
   it('handles a windows exporter output', async () => {
     const input = `
       # HELP go_gc_duration_seconds A summary of the GC invocation durations.

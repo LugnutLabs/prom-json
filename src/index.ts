@@ -1,14 +1,14 @@
-import { Registry, Counter, Gauge, Summary, Histogram } from 'prom-client'
+// import { Registry, Counter, Gauge, Summary, Histogram } from 'prom-client'
 
 import * as readline from 'readline'
 import { Readable } from 'stream'
 
-const typeToCtorMap = {
-  counter: Counter,
-  histogram: Histogram,
-  gauge: Gauge,
-  summary: Summary
-}
+// const typeToCtorMap = {
+//   counter: Counter,
+//   histogram: Histogram,
+//   gauge: Gauge,
+//   summary: Summary
+// }
 /**
  * Convert default Prometheus text formatted metrics data into JSON
  *
@@ -17,7 +17,8 @@ const typeToCtorMap = {
  * @returns {Object} JSON array of the provided metrics
  */
 export async function textToJSON ({ metrics }: { metrics: [string] | string | Readable }) {
-  const registry = new Registry()
+  // const registry = new Registry()
+  const exportedMetrics = []
   if (typeof metrics === 'string' || Array.isArray(metrics)) {
     metrics = Readable.from(metrics)
   }
@@ -30,18 +31,10 @@ export async function textToJSON ({ metrics }: { metrics: [string] | string | Re
     return new Promise((resolve, reject) => {
       rl.on('line', line => {
         if (line.length === 0) { return }
-        // console.log(`${line}`)
         readLine({ line, metric })
-        if (metric.ctor && metric.ready) {
-          const { ctor: Ctor, name, help } = metric
-          // Do things!
-          // eslint-disable-next-line no-new
-          const parsedMetric = new Ctor({
-            name,
-            help,
-            registers: [registry]
-          })
-          metric.setData(parsedMetric)
+        if (metric.ready) {
+          delete metric.ready
+          exportedMetrics.push(metric)
           metric = {}
         }
       })
@@ -54,7 +47,7 @@ export async function textToJSON ({ metrics }: { metrics: [string] | string | Re
   /*
    * Serialize the registries metrics into JSON
    */
-  return registry.getMetricsAsJSON()
+  return exportedMetrics
 }
 
 function readCommentLine ({ commentLine, metric }: { commentLine: string, metric: any }): void {
@@ -62,15 +55,12 @@ function readCommentLine ({ commentLine, metric }: { commentLine: string, metric
   const [, keyword, metricName, ...rest] = tokenizedCommentLine
   switch (keyword) {
     case 'HELP': {
-      const helpText = rest.join('')
       metric.name = metricName
-      metric.help = helpText
+      metric.help = rest.join(' ')
       return
     }
     case 'TYPE': {
-      const type = rest.join('')
-      metric.ctor = typeToCtorMap[type]
-      metric.type = type
+      metric.type = rest.join('').toUpperCase()
       // eslint-disable-next-line no-useless-return
       return
     }
@@ -93,73 +83,70 @@ function isQuantile ({ metricName }: { metricName: string }): boolean {
   return metricName.includes('{quantile="')
 }
 
-function readBucket ({ metricName, metric }: { metricName: string, metric: any }) {
-  const { buckets = [] } = metric
-  const bucket = metricName.match(/["]*?"/)
-  buckets.push(bucket)
-  metric.buckets = buckets
+function readBucket ({ metricName, metric, value }: { metricName: string, metric: any, value: string }) {
+  const { metrics = [] } = metric
+  const { buckets = {} } = metrics[0] || {}
+  const [, bucket] = metricName.match(/"(.*?)"/)
+  metrics[0] = {
+    buckets: {
+      ...buckets,
+      [bucket]: value
+    }
+  }
+  Object.assign(metric, { metrics })
 }
 
-function readQuantile ({ metricName, metric }: { metricName: string, metric: any }) {
-  const { percentiles = [] } = metric
-  const quantile = metricName.match(/["]*?"/)
-  percentiles.push(quantile)
-  metric.percentiles = percentiles
+function readQuantile ({ metricName, metric, value }: { metricName: string, metric: any, value: string }) {
+  const { metrics = [] } = metric
+  const { quantiles = {} } = metrics[0] || {}
+  const [, quantile] = metricName.match(/"(.*?)"/)
+
+  Object.assign(quantiles, { [quantile]: value })
+  metrics[0] = { quantiles }
+  Object.assign(metric, { metrics })
 }
 
 function readMetricLine ({ metricLine, metric }: { metricLine: string, metric: any }) {
   const tokenizedMetricLine = metricLine.split(' ')
   const [metricName, value] = tokenizedMetricLine
   switch (metric.type) {
-    case 'histogram': {
+    case 'HISTOGRAM': {
       if (isBucket({ metricName })) {
-        return readBucket({ metricName, metric })
+        return readBucket({ metricName, metric, value })
       }
       if (isSum({ metricName })) {
-        metric.sum = parseFloat(value)
+        metric.metrics[0].sum = value
         break
       }
       if (isCount({ metricName })) {
-        metric.count = parseInt(value)
-        metric.setData = (metricInstance) => {
-          metricInstance.observe(metric.sum)
-        }
+        metric.metrics[0].count = value
         metric.ready = true
         break
       }
       break
     }
-    case 'summary': {
+    case 'SUMMARY': {
       if (isQuantile({ metricName })) {
-        return readQuantile({ metricName, metric })
+        return readQuantile({ metricName, metric, value })
       }
       if (isSum({ metricName })) {
-        metric.sum = parseFloat(value)
+        metric.metrics[0].sum = value
         break
       }
       if (isCount({ metricName })) {
-        metric.count = parseInt(value)
-        metric.setData = (metricInstance) => {
-          metricInstance.observe(metric.sum)
-        }
+        metric.metrics[0].count = value
         metric.ready = true
         break
       }
       break
     }
-    case 'gauge': {
-      metric.value = parseFloat(value)
-      metric.setData = (metricInstance) => {
-        metricInstance.set(metric.value)
-      }
+    case 'GAUGE': {
+      metric.metrics = [{ value }]
       metric.ready = true
       break
     }
-    case 'counter': {
-      metric.value = parseInt(value)
-      metric.setData = (metricInstance) => {
-        metricInstance.inc(metric.value)
-      }
+    case 'COUNTER': {
+      metric.metrics = [{ value }]
       metric.ready = true
       break
     }
